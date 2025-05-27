@@ -85,14 +85,41 @@
     ps $@ -u $USER -o pid,%cpu,%mem,start,time,bsdtime,command ;
   }
 
-# Export .env file to the environment
+# Export .env file from the user root directory (~/.env) to the environment
   function setenv() {
-    unamestr=$(uname)
-    if [ "$unamestr" = 'Linux' ]; then
-      export $(grep -v '^#' .env | xargs -d '\n')
-    elif [ "$unamestr" = 'FreeBSD' ] | [ "$unamestr" = 'Darwin' ]; then
-      export $(grep -v '^#' .env | xargs -0)
+    local env_file="$HOME/.env"
+
+    if [ ! -f "${env_file}" ]; then
+      echo "WARN: Environment file '${env_file}' not found."
+      return 0 # Or 1 if this should be an error condition
     fi
+
+    if [ ! -r "${env_file}" ]; then
+      echo "ERROR: Environment file '${env_file}' found but is not readable."
+      return 1
+    fi
+
+    local line
+    # Read file line by line
+    while IFS= read -r line || [ -n "$line" ]; do
+      # Remove carriage return if present (for files edited on Windows)
+      line="${line%%$'\r'}"
+
+          # Skip comments (lines starting with #, possibly with leading whitespace) or empty lines
+          if [[ "$line" =~ ^\s*($|#) ]]; then
+            continue
+          fi
+
+      # Export the variable if it contains an equals sign.
+      # This assumes lines are in "KEY=VALUE" format.
+      if [[ "$line" == *"="* ]]; then
+        export "$line"
+      else
+        echo "Warning: Skipping malformed line in '${env_file}' (missing '='): $line"
+      fi
+    done < "${env_file}"
+
+    return 0
   }
 
 # Generate an ecryption key
@@ -190,7 +217,7 @@
 # ---------------------------------------------------------------------------
 
 # Set the default editor to vim
-  export EDITOR="vim"
+  export EDITOR="nvim"
 
 # Install to USER instead of root
   export HOMEBREW_CASK_OPTS="--appdir=~/Applications"
@@ -225,17 +252,19 @@
 # ---------------------------------------------------------------------------
 
 # Syntax highlighting [https://github.com/zsh-users/zsh-syntax-highlighting]
-source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+  source $(brew --prefix)/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
 
 # Auto suggestions [https://github.com/zsh-users/zsh-autosuggestions]
-source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+  source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Auto-completions [https://github.com/marlonrichert/zsh-autocomplete]
 #
-# CURRENTLY LAGS ON MACOS - DON'T KNOW WHY SO LEFT IT COMMENTED OUT
+# CURRENTLY LAGS ON MACOS - DON'T KNOW WHY COMMENTED OUT
 #
 # source $(brew --prefix)/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh
 
+# Set environment
+  setenv
 
 
 
