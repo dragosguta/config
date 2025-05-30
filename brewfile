@@ -1,0 +1,31 @@
+cask_args appdir: "~/Applications"
+
+# Development Tools
+cask "ghostty"                     # Better terminal
+
+# CLI Tools
+brew "bat"                         # Cat clone with syntax highlighting
+brew "eza"                         # Modern replacement for ls
+brew "curl"                        # Transfer data with URL syntax
+brew "fzf"                         # Command-line fuzzy finder
+brew "pnpm"                        # Fast, disk space efficient package manager
+brew "starship"                    # Cross-shell prompt
+brew "zoxide"                      # Smarter cd command
+brew "zsh-syntax-highlighting"     # Syntax highlighting for zsh
+brew "zsh-autosuggestions"         # Autosuggestions for zsh
+brew "zsh-autocomplete"            # Autocomplete for zsh
+brew "fnm"                         # Fast node version manager
+
+# Utilities
+cask "rectangle"                   # Window management app
+cask "monitorcontrol"              # Control external display brightness/volume
+# cask "mac-mouse-fix"             # Improve mouse scrolling/buttons
+
+# Browsers
+cask "google-chrome"               # Web browser
+
+# Media
+cask "spotify"                     # Music streaming
+
+# Fonts
+cask 'font-monaspace'              # Font Monaspace [https://github.com/githubnext/monaspace]
