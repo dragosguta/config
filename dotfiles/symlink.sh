@@ -68,10 +68,11 @@ _is_symlink_up_to_date() {
 # Returns: 0 if backup was successful or not needed, 1 on backup failure.
 _backup_existing_target() {
   local target_path="$1"
+  local backup_file
   # Check if anything exists at the target path that isn't the correct symlink (already handled)
   # and isn't a directory (already handled).
   if [ -e "${target_path}" ] || [ -L "${target_path}" ]; then
-    local backup_file="${target_path}.bak-$(date +%Y%m%d-%H%M%S)"
+    backup_file="${target_path}.bak-$(date +%Y%m%d-%H%M%S)"
     echo "Backing up existing '${target_path}' to '${backup_file}'..."
     if ! mv -f "${target_path}" "${backup_file}"; then
       echo "ERROR: Failed to back up '${target_path}' to '${backup_file}'." >&2
