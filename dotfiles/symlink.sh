@@ -10,79 +10,132 @@
 #
 # ---------------------------------------------------------------------------
 
+# Helper function to get the absolute path to the directory where this script is located.
+_get_script_dir() {
+  # Uses BASH_SOURCE[0] to refer to this script file.
+  # cd to its directory, then pwd to get the absolute path.
+  # &>/dev/null suppresses output from cd.
+  echo "$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+}
+
+# Helper function to check if the source file exists and is a regular file.
+# Arguments:
+#   $1: Path to the source file.
+#   $2: Script directory (for error message context).
+# Returns: 0 if exists, 1 otherwise.
+_check_source_file_exists() {
+  local source_file="$1"
+  local script_dir="$2"
+  if [ ! -f "${source_file}" ]; then
+    echo "ERROR: Source file '${source_file}' not found." >&2
+    echo "Please ensure that a '.zshrc' file exists in the script directory (${script_dir})." >&2
+    return 1
+  fi
+  return 0
+}
+
+# Helper function to check if the target path is a directory.
+# Arguments:
+#   $1: Path to the target.
+# Returns: 0 if not a directory, 1 if it is a directory (which is an error condition).
+_check_target_is_not_directory() {
+  local target_path="$1"
+  if [ -d "${target_path}" ]; then
+    echo "ERROR: Target '${target_path}' exists as a directory. Cannot replace with a symlink." >&2
+    return 1
+  fi
+  return 0
+}
+
+# Helper function to check if the symlink at target_path already exists and points to source_path.
+# Arguments:
+#   $1: Path to the target symlink.
+#   $2: Expected path of the source file.
+# Returns: 0 if symlink is correct and up-to-date, 1 otherwise.
+_is_symlink_up_to_date() {
+  local target_symlink="$1"
+  local expected_source="$2"
+  if [ -L "${target_symlink}" ] && [ "$(readlink "${target_symlink}")" = "${expected_source}" ]; then
+    echo "Symlink '${target_symlink}' already exists and is correct."
+    return 0 # Symlink is correct
+  fi
+  return 1 # Symlink is not correct or does not exist as a symlink
+}
+
+# Helper function to back up an existing file or symlink at the target path.
+# Arguments:
+#   $1: Path to the target file/symlink to back up.
+# Returns: 0 if backup was successful or not needed, 1 on backup failure.
+_backup_existing_target() {
+  local target_path="$1"
+  # Check if anything exists at the target path that isn't the correct symlink (already handled)
+  # and isn't a directory (already handled).
+  if [ -e "${target_path}" ] || [ -L "${target_path}" ]; then
+    local backup_file="${target_path}.bak-$(date +%Y%m%d-%H%M%S)"
+    echo "Backing up existing '${target_path}' to '${backup_file}'..."
+    if ! mv -f "${target_path}" "${backup_file}"; then
+      echo "ERROR: Failed to back up '${target_path}' to '${backup_file}'." >&2
+      return 1
+    fi
+  fi
+  return 0 # Backup successful or not needed
+}
+
+# Helper function to create the symbolic link.
+# Arguments:
+#   $1: Path to the source file.
+#   $2: Path for the target symlink.
+# Returns: 0 if symlink creation was successful, 1 otherwise.
+_create_symbolic_link() {
+  local source_path="$1"
+  local target_path="$2"
+  echo "Creating symlink: '${target_path}' -> '${source_path}'..."
+  if ln -sf "${source_path}" "${target_path}"; then
+    echo "Symlink created successfully."
+  else
+    echo "ERROR: Failed to create symlink '${target_path}'." >&2
+    return 1
+  fi
+  return 0
+}
+
 # Function to symlink the .zshrc file from this script's directory
 # to the user's home directory (~/.zshrc).
+# It composes several helper functions to perform specific tasks like
+# path resolution, validation, backup, and symlink creation.
 #
 # It assumes that the source .zshrc file (the one to be linked)
 # is located in the same directory as this symlink.sh script.
 symlink_zshrc() {
-  # Determine the absolute path to the directory where this script is located.
-  # This is used to reliably find the source .zshrc file, even if the
-  # script is called from a different directory.
   local SCRIPT_DIR
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+  SCRIPT_DIR="$(_get_script_dir)" # Use helper to get script directory
 
   local SOURCE_ZSHRC="${SCRIPT_DIR}/.zshrc"
   local TARGET_ZSHRC="${HOME}/.zshrc"
 
-  echo "Preparing to symlink Zsh configuration..."
-  echo "Source: ${SOURCE_ZSHRC}"
-  echo "Target: ${TARGET_ZSHRC}"
-
   # Check if the source .zshrc file actually exists.
-  if [ ! -f "${SOURCE_ZSHRC}" ]; then
-    echo "ERROR: Source file '${SOURCE_ZSHRC}' not found."
-    echo "Please ensure that a '.zshrc' file exists in the same directory as this script (${SCRIPT_DIR})."
+  if ! _check_source_file_exists "${SOURCE_ZSHRC}" "${SCRIPT_DIR}"; then
     return 1
   fi
 
-  local perform_backup=false
-  local backup_needed_message=""
-
-  # Check the status of the target file/symlink
-  if [ -L "${TARGET_ZSHRC}" ]; then # Target is a symlink
-    if [ "$(readlink "${TARGET_ZSHRC}")" = "${SOURCE_ZSHRC}" ]; then
-      echo "Symlink already exists and is correct: '${TARGET_ZSHRC}' -> '${SOURCE_ZSHRC}'"
-      return 0 # Nothing to do
-    else
-      # Target is a symlink but points to the wrong location
-      backup_needed_message="Warning: '${TARGET_ZSHRC}' is an existing symlink pointing to '$(readlink "${TARGET_ZSHRC}")'."
-      perform_backup=true
-    fi
-  elif [ -f "${TARGET_ZSHRC}" ]; then # Target is a regular file
-    backup_needed_message="Warning: '${TARGET_ZSHRC}' exists as a regular file."
-    perform_backup=true
-  elif [ -d "${TARGET_ZSHRC}" ]; then # Target is a directory
-    echo "ERROR: '${TARGET_ZSHRC}' exists as a directory. Cannot replace a directory with a symlink to a file using this script."
+  # Check if the target is a directory, which we cannot replace.
+  if ! _check_target_is_not_directory "${TARGET_ZSHRC}"; then
     return 1
   fi
-  # If none of the above, TARGET_ZSHRC does not exist, and perform_backup remains false.
 
-  # Perform backup if needed
-  if [ "$perform_backup" = true ]; then
-    echo "${backup_needed_message}"
-    local BACKUP_FILE="${TARGET_ZSHRC}.bak-$(date +%Y%m%d-%H%M%S)"
-    echo "It will be backed up to '${BACKUP_FILE}' before being replaced by the new symlink."
-    if mv -f "${TARGET_ZSHRC}" "${BACKUP_FILE}"; then
-      echo "Backup of '${TARGET_ZSHRC}' to '${BACKUP_FILE}' successful."
-    else
-      echo "ERROR: Failed to back up '${TARGET_ZSHRC}' to '${BACKUP_FILE}'."
-      return 1
-    fi
+  # Check if the symlink already exists and points to the correct source.
+  if _is_symlink_up_to_date "${TARGET_ZSHRC}" "${SOURCE_ZSHRC}"; then
+    return 0 # Nothing to do
+  fi
+
+  # If the target exists (as a file or a different symlink), back it up.
+  if ! _backup_existing_target "${TARGET_ZSHRC}"; then
+    return 1 # Backup failed
   fi
 
   # Create the symbolic link.
-  # -s: creates a symbolic link.
-  # -f: forces the creation. If the target file already exists (it shouldn't if backup worked,
-  #     or if it didn't exist initially), it will be removed.
-  echo "Creating symlink: '${TARGET_ZSHRC}' -> '${SOURCE_ZSHRC}'"
-  if ln -sf "${SOURCE_ZSHRC}" "${TARGET_ZSHRC}"; then
-    echo "Symlink created successfully."
-  else
-    echo "ERROR: Failed to create symlink."
-    # Attempt to provide more context on failure if possible (e.g. permissions)
-    # This part can be expanded if more detailed error reporting is needed.
-    return 1
+  if ! _create_symbolic_link "${SOURCE_ZSHRC}" "${TARGET_ZSHRC}"; then
+    return 1 # Symlink creation failed
   fi
 
   return 0
