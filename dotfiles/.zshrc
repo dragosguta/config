@@ -136,6 +136,13 @@
     echo $key
   }
 
+# Generate Git aliases
+  function gga() {
+    for al in `git --list-cmds=alias`; do
+      alias g$al="git $al"
+    done
+  }
+
 # ---------------------------------------------------------------------------
 # 1. Make Terminal Better
 # ---------------------------------------------------------------------------
@@ -241,11 +248,17 @@
   source <(fzf --zsh)
 
 # PNPM for Node in USER library
-  export PNPM_HOME="~/Library/pnpm"
+  export PNPM_HOME="$HOME/Library/pnpm"
   case ":$PATH:" in
   *":$PNPM_HOME:"*) ;;
   *) export PATH="$PNPM_HOME:$PATH" ;;
   esac
+
+# Set environment
+  setenv
+
+# Set Git aliases
+  gga
 
 # ---------------------------------------------------------------------------
 # 5. Plugins
@@ -262,10 +275,6 @@
 # CURRENTLY LAGS ON MACOS - DON'T KNOW WHY COMMENTED OUT
 #
 # source $(brew --prefix)/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh
-
-# Set environment
-  setenv
-
 
 
 

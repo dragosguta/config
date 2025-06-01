@@ -199,7 +199,17 @@ symlink_nvim_config() {
   _process_symlink "nvim" "${TARGET_NVIM_CONFIG}"
 }
 
+# Function to symlink the .gitconfig file from this script's directory
+# (specifically from the 'dotfiles' subdirectory) to the user's home directory (~/.gitconfig).
+# It assumes that the source .gitconfig file (the one to be linked)
+# is located in 'dotfiles/.gitconfig' relative to this symlink.sh script.
+symlink_gitconfig() {
+  local TARGET_GITCONFIG="${HOME}/.gitconfig"
+  _process_symlink "dotfiles/.gitconfig" "${TARGET_GITCONFIG}"
+}
+
 symlink_zshrc
 symlink_starship_toml
 symlink_ghostty_config
 symlink_nvim_config
+symlink_gitconfig
