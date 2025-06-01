@@ -143,6 +143,12 @@
     done
   }
 
+# Run Git config for env var
+  function gcg() {
+    git config --global user.name $GIT_USERNAME
+    git config --global user.email $GIT_EMAIL
+  }
+
 # ---------------------------------------------------------------------------
 # 1. Make Terminal Better
 # ---------------------------------------------------------------------------
@@ -259,6 +265,9 @@
 
 # Set Git aliases
   gga
+
+# Set Git user/email
+  gcg
 
 # ---------------------------------------------------------------------------
 # 5. Plugins
