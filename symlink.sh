@@ -195,7 +195,7 @@ symlink_ghostty_config() {
 # It assumes that the source nvim configuration (the one to be linked)
 # is a directory named 'nvim' located in the same directory as this symlink.sh script.
 symlink_nvim_config() {
-  local TARGET_NVIM_CONFIG="/Users/Worker/.config/nvim"
+  local TARGET_NVIM_CONFIG="${HOME}/.config/nvim"
   _process_symlink "nvim" "${TARGET_NVIM_CONFIG}"
 }
 
